@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array
+        name="edit_array">
+        <item>@string/edit_waypoint</item>
+        <item>@string/delete_waypoint</item>
+
+    </string-array>
+</resources>

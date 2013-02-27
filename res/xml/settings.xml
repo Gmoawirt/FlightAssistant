@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <CheckBoxPreference
+        android:key="setting_mock_location"
+        android:title="@string/setting_mock_location"
+        android:summary="@string/setting_mock_location_summary"
+        android:defaultValue="true" />
+</PreferenceScreen>

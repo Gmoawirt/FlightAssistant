@@ -1,0 +1,19 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/edit_waypoints"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/edit_waypoints"/>
+    <item
+        android:id="@+id/view_logs"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/view_logs"/>
+    <item
+        android:id="@+id/settings"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/settings"/>
+
+</menu>

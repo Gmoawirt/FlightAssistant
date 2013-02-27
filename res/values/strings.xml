@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">FlightAssistant</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="add_waypoint">Add Waypoint</string>
+    <string name="hello">Hello</string>
+    <string name="sortby_icao">Sort by ICAO</string>
+    <string name="service_name">Service</string>
+    <string name="edit_waypoints">Edit Waypoints</string>
+    <string name="view_logs">View Logs</string>
+    <string name="settings">Settings</string>
+    <string name="setting_mock_location">Enable Mock Locations</string>
+    <string name="setting_mock_location_summary">Enable Mock locations via PC over GPS</string>
+    <string name="edit_waypoint">Edit Waypoint</string>
+    <string name="delete_waypoint">Delete Waypoint</string>
+    <string name="wrong_icao">Wrong ICAO-Code</string>
+    <string name="wrong_airfield">Waypoint name missing or too long</string>
+    <string name="wrong_description">Waypoint description is long, maximum is 500 characters</string>
+    <string name="wrong_longitude">Wrong longitude format, use decimal degrees E</string>
+    <string name="wrong_latitude">Wrong latitude format, use decimal degrees N</string>
+    <string name="wrong_altitude">Wrong altitude format, use meters with decimal</string>
+    <string name="icao_already_exists">Waypoint with given ICAO already exists</string>
+    <string name="waypoint_added">Waypoint added</string>
+    <string name="waypoint_edited">Waypoint edited</string>
+    <string name="start_button_enabled">Start Flight Logging</string>
+    <string name="start_button_disabled">Waiting for Satellite Fix</string>
+
+</resources>
