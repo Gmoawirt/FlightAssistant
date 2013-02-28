@@ -1,8 +1,5 @@
 package com.gmoawirt.flightassistant;
 
-import java.util.ArrayList;
-import java.util.Collections;
-
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -49,9 +46,6 @@ public class FlightManager extends Service implements LocationListener {
 	private static LocationManager locationManager;
 	private StateManager stateManager;
 	private LogManager logManager;
-	private Plane plane;
-	private Route route;
-	private int planeId;
 
 	private double longitude;
 	private double latitude;
@@ -92,21 +86,6 @@ public class FlightManager extends Service implements LocationListener {
 		// PlaneManager.getInstance().addPlane(PositionAndSpeedData.getInstance(),
 		// false, "EV97", 100d, 0.5d, 55d, 2.5d);
 		PlaneManager.getInstance().setupPlane();
-
-		// Create a Route
-		// Waypoint org = new Waypoint("EDMF", 48.5111296d, 13.347400d,
-		// 411.10356d);
-		// Waypoint dest = new Waypoint("EDME", 48.3961129d, 12.722763d,
-		// 410.17965d);
-
-		// RouteManager.getInstance().addRoute("Fernflug", org, dest);
-		// RouteManager.getInstance().setupRoute();
-
-		// Load the Plane
-		plane = PlaneManager.getInstance().getActivePlane();
-
-		// Load the Route
-		route = RouteManager.getInstance().getActiveRoute();
 
 		// Create the Log Manager
 		logManager = new LogManager(this);
@@ -244,12 +223,6 @@ public class FlightManager extends Service implements LocationListener {
 
 	public boolean getRunning() {
 		return isRunning;
-	}
-
-	public double getDistanceToDestination() {
-
-		return GPSHelper.gps2m(this.latitude, this.longitude, RouteManager.getInstance().getActiveRoute().getDestination().getLatitude(), RouteManager
-				.getInstance().getActiveRoute().getDestination().getLongitude());
 	}
 
 	public static LocationManager getLocationManager() {

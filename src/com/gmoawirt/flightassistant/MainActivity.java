@@ -33,6 +33,8 @@ public class MainActivity extends Activity implements LocationListener {
 	private static TextView satelliteStatus;
 	private static Button startFlight;
 	private static Button endFlight;
+	
+	private Location location = null;
 
 	private FlightManager flightManager;
 	private SharedPreferences sharedPref;
@@ -142,7 +144,9 @@ public class MainActivity extends Activity implements LocationListener {
 			startActivity(new Intent(this, Settings.class));
 			return true;
 		case R.id.edit_waypoints:
-			startActivity(new Intent(this, WaypointViewer.class));
+			Intent intent = new Intent(this, WaypointViewer.class);
+			intent.putExtra("location", this.location);
+			startActivity(intent);
 			return true;
 		case R.id.view_logs:
 			startActivity(new Intent(this, LogViewer.class));
@@ -207,9 +211,11 @@ public class MainActivity extends Activity implements LocationListener {
 	private void enableStartButton(boolean enable) {
 		Button b = (Button) findViewById(R.id.button_start_flight);
 		if (enable) {
+			Log.i("MainActivity", "Enabling Button");
 			b.setClickable(true);
 			b.setText(R.string.start_button_enabled);
 		} else {
+			Log.i("MainActivity", "Disabling Button");
 			b.setClickable(false);
 			b.setText(R.string.start_button_disabled);
 		}
@@ -217,6 +223,8 @@ public class MainActivity extends Activity implements LocationListener {
 
 	@Override
 	public void onLocationChanged(Location location) {
+		
+		this.location = location;
 
 		satelliteStatus = (TextView) findViewById(R.id.satellite_status);		
 
@@ -227,8 +235,7 @@ public class MainActivity extends Activity implements LocationListener {
 			} else {
 				enableStartButton(true);
 			}
-			satelliteStatus.setText("Satellites: " + location.getExtras().get("satellites") + "/13, Accuracy " + location.getAccuracy());
-			
+			satelliteStatus.setText("Satellites: " + location.getExtras().get("satellites") + "/13, Accuracy " + location.getAccuracy());			
 		} else {
 			//Mock Provider enabled
 			enableStartButton(true);

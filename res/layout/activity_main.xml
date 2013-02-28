@@ -20,66 +20,106 @@
             android:id="@+id/title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="40sp"
-            android:text="Flight Assistant" />
+            android:text="Flight Assistant"
+            android:textSize="40sp" />
 
         <TextView
             android:id="@+id/satellite_status"
+            style="@android:style/TextAppearance.Large"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            style="@android:style/TextAppearance.Large"
             android:text="Satellite Status" />
 
         <Button
             android:id="@+id/button_start_flight"
+            style="@android:style/TextAppearance.Large"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:clickable="false"
             android:gravity="center"
             android:onClick="startFlight"
-            style="@android:style/TextAppearance.Large"
-            android:text="@string/start_button_disabled"
-            android:clickable="false"
-             />
+            android:text="@string/start_button_disabled" />
 
         <Button
             android:id="@+id/button_end_flight"
+            style="@android:style/TextAppearance.Large"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:onClick="endFlight"
             android:text="End Flight"
-            style="@android:style/TextAppearance.Large"
             android:visibility="invisible" />
 
-        <TextView
-            android:id="@+id/latitude"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" >
 
-        <TextView
-            android:id="@+id/longitude"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+            <TableRow
+                android:id="@+id/tableRow1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
 
-        <TextView
-            android:id="@+id/altitude"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+                <TextView
+                    android:id="@+id/longitude"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Longitude" />
+            </TableRow>
 
-        <TextView
-            android:id="@+id/groundspeed"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+            <TableRow
+                android:id="@+id/tableRow2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
 
-        <TextView
-            android:id="@+id/state"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+                <TextView
+                    android:id="@+id/altitude"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Altitude" />
+            </TableRow>
+
+            <TableRow
+                android:id="@+id/tableRow3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
+
+                <TextView
+                    android:id="@+id/groundspeed"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Groundspeed" />
+            </TableRow>
+
+            <TableRow
+                android:id="@+id/tableRow4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
+
+                <TextView
+                    android:id="@+id/state"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="State" />
+            </TableRow>
+
+            <TableRow
+                android:id="@+id/tableRow5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" >
+
+                <TextView
+                    android:id="@+id/latitude"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Latitude" />
+
+                <TextView
+                    android:id="@+id/textView1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TextView" />
+            </TableRow>
+        </TableLayout>
     </LinearLayout>
 
 </RelativeLayout>

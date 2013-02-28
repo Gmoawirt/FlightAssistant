@@ -12,4 +12,14 @@
         android:orderInCategory="100"
         android:showAsAction="ifRoom"
         android:title="@string/sortby_icao"/>
+    <item
+        android:id="@+id/waypoint_sortby_distance"                
+        android:orderInCategory="100"
+        android:showAsAction="ifRoom"
+        android:title="@string/sortby_distance"/>
+    <item
+        android:id="@+id/waypoint_sortby_name"                
+        android:orderInCategory="100"
+        android:showAsAction="ifRoom"
+        android:title="@string/sortby_name"/>
 </menu>

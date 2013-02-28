@@ -1,10 +1,6 @@
 package com.gmoawirt.flightassistant;
 
-import java.util.ArrayList;
-import java.util.Collections;
-
 import android.content.Context;
-import android.location.Location;
 import android.util.Log;
 
 //Monitors the Flight, checking for State Changes
@@ -178,7 +174,7 @@ public class StateManager {
 
 			setState(STATE_BEFORE_LANDING);
 
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TAKEOFF, getNearestWaypoint().getIcao());
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TAKEOFF, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
 		}
 
 	}
@@ -217,47 +213,16 @@ public class StateManager {
 
 			Log.i(this.getClass().getName(), "Touch and Go!");
 
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TOUCH_AND_GO, getNearestWaypoint().getIcao());
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TOUCH_AND_GO, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
 		} else {
 
 			Log.i(this.getClass().getName(), "Normal Landing");
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_LANDING, getNearestWaypoint().getIcao());
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_LANDING, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
 
 		}
 
 		Log.i(this.getClass().getName(), "Setting state to before takeoff");
 		setState(STATE_BEFORE_TAKEOFF);
-
-	}
-
-	public Waypoint getNearestWaypoint() {
-
-		double longitudeP = this.longitude;
-		double latitudeP = this.latitude;
-
-		// Loop through all waypoints, compare each Waypoint to current position
-		// TODO: Redo for whole Waypoint Database
-
-		WaypointManager datasource = new WaypointManager(context);
-		datasource.open();
-		String orderBy = MySQLiteHelper.COLUMN_ID;
-		ArrayList<Waypoint> waypoints = (ArrayList<Waypoint>) datasource.getAllWaypoints(orderBy);
-		datasource.close();
-
-		for (Waypoint waypoint : waypoints) {
-
-			float[] distance = new float[3];					
-			Location.distanceBetween(latitudeP, longitudeP, waypoint.getLatitude(), waypoint.getLongitude(), distance);
-			waypoint.setDistance(distance[0]);			
-			
-		}		
-
-		ArrayList<Waypoint> sortedWaypoints = new ArrayList<Waypoint>();
-		sortedWaypoints.addAll(waypoints);
-		
-		Log.i(this.getClass().getName(), "Nearest Waypoint ICAO " + Collections.min(sortedWaypoints).getIcao() + ", Distance = " + Collections.min(sortedWaypoints).getDistance());
-		
-		return Collections.min(sortedWaypoints);
 
 	}
 

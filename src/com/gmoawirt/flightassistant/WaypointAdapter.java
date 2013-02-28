@@ -1,8 +1,6 @@
 package com.gmoawirt.flightassistant;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 
 import android.view.LayoutInflater;
 import android.view.View;

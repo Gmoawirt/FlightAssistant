@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import android.app.DialogFragment;
 import android.app.ListActivity;
 import android.content.Intent;
+import android.location.Location;
+import android.location.LocationListener;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -14,43 +16,70 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
 
-public class WaypointViewer extends ListActivity implements EditDeleteDialogFragment.EditDeleteDialogListener, DeleteDialogFragment.DeleteDialogListener {
-	private WaypointManager datasource = new WaypointManager(this);
-	private String orderBy;
+public class WaypointViewer extends ListActivity implements EditDeleteDialogFragment.EditDeleteDialogListener, DeleteDialogFragment.DeleteDialogListener,
+		LocationListener {
+	private WaypointManager datasource = new WaypointManager(this);	
 	private ArrayList<Waypoint> values;
+	private Location location;
+	WaypointAdapter adapter;
+	private String orderBy;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.waypoint_viewer);
-		setTitle("Edit Waypoints");
+		setTitle("Edit Waypoints");		
+		
 	}
 
 	@Override
 	public void onStart() {
 		super.onStart();
-		Log.i(this.getClass().getName(), "(onStart)");
-
+		Log.i(this.getClass().getName(), "(onStart)");			
+		
 		if (getIntent().getExtras() != null) {
 			if (getIntent().getExtras().getString("orderby") != null) {
 				orderBy = getIntent().getExtras().getString("orderby");
+			} else {
+				orderBy = MySQLiteHelper.COLUMN_AIRFIELD;
 			}
+			
+			if (((Location) getIntent().getExtras().get("location") != null) && (location == null)) {
+				location = (Location) getIntent().getExtras().get("location");
+				Log.i("Waypoint Viewer", "Resetting Location");
+			}			
 		} else {
 			orderBy = MySQLiteHelper.COLUMN_AIRFIELD;
 		}
-
-		datasource.open();
-		values = (ArrayList<Waypoint>) datasource.getAllWaypoints(orderBy);
-		WaypointAdapter adapter = new WaypointAdapter(values);
+		
+		values = getWaypoints(orderBy);		
+		adapter = new WaypointAdapter(values);
 		setListAdapter(adapter);
-		datasource.close();
+		adapter.notifyDataSetChanged();		
 	}
 
-	protected void onListItemClick(ListView l, View v, int position, long id) {
+	private ArrayList<Waypoint> getWaypoints(String orderBy){
 
-		// Toast.makeText(getApplicationContext(),
-		// values.get(position).getIcao() + " Longitude: " +
-		// values.get(position).getLongitude(), Toast.LENGTH_LONG).show();
+		datasource.open();
+
+		if (orderBy.equals("distance")) {
+			if (location != null) {				
+				values = GpsHelper.getSortedByDistance(location.getLongitude(), location.getLatitude(), this);
+			} else {
+				Toast.makeText(getApplicationContext(), "No GPS connection, sorting by ICAO", Toast.LENGTH_LONG).show();
+				values = (ArrayList<Waypoint>) datasource.getAllWaypoints(MySQLiteHelper.COLUMN_ICAO);
+			}
+		} else {
+			values = (ArrayList<Waypoint>) datasource.getAllWaypoints(orderBy);
+		}
+		
+		datasource.close();
+		Log.i("Waypoint Viewer", "Returning values with orderBy= " + orderBy);
+		return values;
+		
+	}
+	
+	protected void onListItemClick(ListView l, View v, int position, long id) {
 
 		DialogFragment edf = new EditDeleteDialogFragment();
 		Bundle bundle = new Bundle();
@@ -82,13 +111,26 @@ public class WaypointViewer extends ListActivity implements EditDeleteDialogFrag
 			ddf.show(getFragmentManager(), "delete_waypoint");
 			break;
 		}
-
-		Toast.makeText(getApplicationContext(), "Clicked on position " + which, Toast.LENGTH_LONG).show();
 	}
 
+	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.waypoint_viewer, menu);
+
+		return true;
+	}
+	
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu){		
+
+		// Remove "sort by distance" menu option if there's no location data
+		//if ((getIntent().getExtras() == null) || ((Location) getIntent().getExtras().get("location") == null)) {
+		if (location == null) {
+			Log.i("WaypointViewer", "location == null, removing menu item sort by distance");
+			menu.removeItem(R.id.waypoint_sortby_distance);
+		}
+		
 		return true;
 	}
 
@@ -106,10 +148,30 @@ public class WaypointViewer extends ListActivity implements EditDeleteDialogFrag
 
 			// Clicked on Sort by ICAO
 		case R.id.waypoint_sortby_icao:
-			Intent intent2 = new Intent(this, WaypointViewer.class);
-			intent2.putExtra("orderby", MySQLiteHelper.COLUMN_ICAO);
-			finish();
-			startActivity(intent2);
+			//Intent intent2 = new Intent(this, WaypointViewer.class);
+			//intent2.putExtra("orderby", MySQLiteHelper.COLUMN_ICAO);
+			//finish();
+			//startActivity(intent2);
+			orderBy = MySQLiteHelper.COLUMN_ICAO;
+			values = getWaypoints(orderBy);
+			adapter = new WaypointAdapter(values);
+			setListAdapter(adapter);
+			return true;
+
+			// Clicked on Sort by Distance
+		case R.id.waypoint_sortby_distance:
+			orderBy = "distance";
+			values = getWaypoints(orderBy);
+			adapter = new WaypointAdapter(values);
+			setListAdapter(adapter);
+			return true;
+
+			// Clicked on Sort by Name
+		case R.id.waypoint_sortby_name:
+			orderBy = MySQLiteHelper.COLUMN_AIRFIELD;
+			values = getWaypoints(orderBy);
+			adapter = new WaypointAdapter(values);
+			setListAdapter(adapter);
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
@@ -123,6 +185,30 @@ public class WaypointViewer extends ListActivity implements EditDeleteDialogFrag
 		datasource.close();
 		dialog.dismiss();
 		recreate();
+	}
+
+	@Override
+	public void onLocationChanged(Location arg0) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onProviderDisabled(String arg0) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onProviderEnabled(String arg0) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onStatusChanged(String arg0, int arg1, Bundle arg2) {
+		// TODO Auto-generated method stub
+
 	}
 
 }

@@ -42,9 +42,10 @@ public class LogManager extends EntryManager {
 
 	public List<Flightlog> getLogsFromDate(Long timestamp) {
 		List<Flightlog> logs = new ArrayList<Flightlog>();
+		timestamp /= 1000;
 
 		Cursor cursor = database.query(MySQLiteHelper.TABLE_LOGS, allColumns, "DATE(" + timestamp + ", 'unixepoch', 'localtime') = DATE("
-				+ MySQLiteHelper.COLUMN_TIMESTAMP + ", 'unixepoch', 'localtime')", null, null, null, MySQLiteHelper.COLUMN_TIMESTAMP);
+				+ MySQLiteHelper.COLUMN_TIMESTAMP + "/1000, 'unixepoch', 'localtime')", null, null, null, MySQLiteHelper.COLUMN_TIMESTAMP);
 
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {

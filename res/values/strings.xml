@@ -8,6 +8,8 @@
     <string name="add_waypoint">Add Waypoint</string>
     <string name="hello">Hello</string>
     <string name="sortby_icao">Sort by ICAO</string>
+    <string name="sortby_name">Sort by Name</string>
+    <string name="sortby_distance">Sort by Distance</string>
     <string name="service_name">Service</string>
     <string name="edit_waypoints">Edit Waypoints</string>
     <string name="view_logs">View Logs</string>

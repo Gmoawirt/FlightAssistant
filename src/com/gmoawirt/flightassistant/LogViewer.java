@@ -6,69 +6,38 @@ import java.util.Date;
 import java.util.Locale;
 
 import android.app.ActionBar;
+import android.app.ActionBar.Tab;
+import android.app.ActionBar.TabListener;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
 import android.app.ListActivity;
-import android.app.ListFragment;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.ListView;
 
 public class LogViewer extends ListActivity {
 	private LogManager datasource;
 	private String oldTime = "";
 	private static LogAdapter adapter;
-	private Fragment fragment = new ArrayListFragment();
+	private ArrayList<Flightlog> valuesForDate;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.logviewer);
 		setTitle("Flightlogs");
+
+		// Get the database datasource
 		datasource = new LogManager(this);
 		datasource.open();
+		// Get all Logs from Database
 		ArrayList<Flightlog> values = (ArrayList<Flightlog>) datasource.getAllLogs();
 		datasource.close();
 
+		// Create the Action Bar
 		final ActionBar actionBar = getActionBar();
 
-		// Specify that tabs should be displayed in the action bar.
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
-
-		// Create a tab listener that is called when the user changes tabs.
-		ActionBar.TabListener tabListener = new ActionBar.TabListener() {
-			public void onTabSelected(ActionBar.Tab tab, FragmentTransaction ft) {
-				
-				datasource.open();
-				ArrayList<Flightlog> valuesForDate = (ArrayList<Flightlog>) datasource.getLogsFromDate((Long)tab.getTag());
-				datasource.close();
-				adapter = new LogAdapter(valuesForDate);				
-
-				// Check if the fragment is already initialized
-				if (getFragmentManager().findFragmentById(android.R.id.content) == null) {
-					// If not, instantiate and add it to the activity
-					Bundle bundle = new Bundle();
-					bundle.putString("log_day", tab.getText().toString());					
-					fragment.setArguments(bundle);
-					ft.add(android.R.id.content, fragment);					
-					Log.i("LogViewer", "Adding Fragment");
-				} else {
-					// If it exists, simply attach it in order to show it
-					((ArrayListFragment) getFragmentManager().findFragmentById(android.R.id.content)).update(tab.getText().toString());
-					ft.attach(fragment);
-					Log.i("LogViewer", "Attaching Fragment");
-				}
-
-			}
-
-			public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction ft) {
-			}
-
-			public void onTabReselected(ActionBar.Tab tab, FragmentTransaction ft) {
-			}
-		};
 
 		for (Flightlog flightlog : values) {
 
@@ -78,40 +47,67 @@ public class LogViewer extends ListActivity {
 			if (!oldTime.equals(time)) {
 				// make new row
 				Log.i("LogViewer", "Unique Date: " + time);
-				actionBar.addTab(actionBar.newTab().setText(time).setTabListener(tabListener).setTag(flightlog.getId()));
+				actionBar.addTab(actionBar.newTab().setText(time).setTabListener(new MyTabListener<LogListFragment>(this, "artist",
+		                LogListFragment.class)).setTag(flightlog.getTimestamp()));				
+				
 			}
 
 			oldTime = time;
 
 		}
+		
+		actionBar.setSelectedNavigationItem(actionBar.getNavigationItemCount()-1);
 
 	}
 
-	public static class ArrayListFragment extends ListFragment {
+	public static class MyTabListener<T extends Fragment> implements TabListener {
+		private Fragment mFragment;
+		private final Activity mActivity;
+		private final String mTag;
+		private final Class<T> mClass;
 
-		@Override
-		public void onActivityCreated(Bundle savedInstanceState) {
-			super.onActivityCreated(savedInstanceState);
-			Bundle bundle = getArguments();
-			Log.i("LogViewer", "Bundle = " + bundle.getString("log_day"));
-			setListAdapter(adapter);
+		/**
+		 * * Constructor used each time a new tab is created. * * @param
+		 * activity * The host Activity, used to instantiate the fragment * @param
+		 * tag * The identifier tag for the fragment * @param clz * The
+		 * fragment's Class, used to instantiate the fragment
+		 */
+
+		public MyTabListener(Activity activity, String tag, Class<T> clz) {
+			mActivity = activity;
+			mTag = tag;
+			mClass = clz;
 		}
 
-		@Override
-		public void onListItemClick(ListView l, View v, int position, long id) {
-			Log.i("FragmentList", "Item clicked: " + id);
+		/* The following are each of the ActionBar.TabListener callbacks */
+
+		public void onTabSelected(Tab tab, FragmentTransaction ft) {
+			// Check if the fragment is already initialized
+			if (mFragment == null) {
+				// If not, instantiate and add it to the activity
+				mFragment = Fragment.instantiate(mActivity, mClass.getName());
+				Bundle bundle = new Bundle();
+				bundle.putString("log_day", tab.getTag().toString());
+				mFragment.setArguments(bundle);
+				ft.add(android.R.id.content, mFragment, mTag);				
+			} else {
+				// If it exists, simply attach it in order to show it
+				//ft.setCustomAnimations(android.R.animator.fade_in, R.animator.animationtest);
+				ft.attach(mFragment);
+			}
 		}
-		
-		@Override
-		public void onAttach(Activity activity){
-		super.onAttach(activity);
+
+		public void onTabUnselected(Tab tab, FragmentTransaction ft) {
+			if (mFragment != null) {
+				//ft.setCustomAnimations(android.R.animator.fade_in, R.animator.test);
+				ft.detach(mFragment);
+			}
 		}
-		
-		public void update(String date) {
-			
-			Log.i("LogViewer", "Would update with data = " + date);
+
+		public void onTabReselected(Tab tab, FragmentTransaction ft) {
 		}
 	}
+
 
 	@Override
 	protected void onResume() {
