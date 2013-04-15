@@ -5,4 +5,41 @@
         android:title="@string/setting_mock_location"
         android:summary="@string/setting_mock_location_summary"
         android:defaultValue="true" />
+    
+        <EditTextPreference
+        android:key="setting_qnh"
+        android:title="@string/setting_qnh"
+        android:summary="@string/setting_qnh_summary"
+        android:inputType="numberDecimal"
+        android:defaultValue="1013.25" />
+        
+          <EditTextPreference
+        android:key="setting_groundspeed_takeoff"
+        android:title="@string/setting_groundspeed_takeoff"
+        android:summary="@string/setting_groundspeed_takeoff_summary"
+        android:inputType="numberDecimal"
+        android:defaultValue="100" />
+                
+        <EditTextPreference
+        android:key="setting_delta_altitude_takeoff"
+        android:title="@string/setting_delta_altitude_takeoff"
+        android:summary="@string/setting_delta_altitude_takeoff_summary"
+        android:inputType="numberDecimal"
+        android:defaultValue="1" />
+        
+                <EditTextPreference
+        android:key="setting_groundspeed_landing"
+        android:title="@string/setting_groundspeed_landing"
+        android:summary="@string/setting_groundspeed_landing_summary"
+        android:inputType="numberDecimal"
+        android:defaultValue="70" />
+                
+                        <EditTextPreference
+        android:key="setting_delta_altitude_margin"
+        android:title="@string/setting_delta_altitude_margin"
+        android:summary="@string/setting_delta_altitude_margin_summary"
+        android:inputType="numberDecimal"
+        android:defaultValue="4" />
+        
+        
 </PreferenceScreen>

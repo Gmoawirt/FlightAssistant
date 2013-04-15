@@ -16,6 +16,16 @@
     <string name="settings">Settings</string>
     <string name="setting_mock_location">Enable Mock Locations</string>
     <string name="setting_mock_location_summary">Enable Mock locations via PC over GPS</string>
+    <string name="setting_qnh">Set local QNH</string>
+    <string name="setting_qnh_summary">Used for precise barometric altitude calculation</string>
+    <string name="setting_groundspeed_takeoff">Takeoff Groundspeed</string>
+    <string name="setting_groundspeed_takeoff_summary">Used for detecting takeoffs if groundspeed higher than this</string>
+    <string name="setting_delta_altitude_takeoff">Takeoff Altitude Delta</string>
+    <string name="setting_delta_altitude_takeoff_summary">Used for detecting takeoffs if altitude change higher than this</string>
+     <string name="setting_groundspeed_landing">Landing Groundspeed</string>
+    <string name="setting_groundspeed_landing_summary">Used for detecting landings if groundspeed lower than this</string>
+     <string name="setting_delta_altitude_margin">Landing Altitude Delta Margin</string>
+    <string name="setting_delta_altitude_margin_summary">Used for detecting landings if altitude change lower than this</string>
     <string name="edit_waypoint">Edit Waypoint</string>
     <string name="delete_waypoint">Delete Waypoint</string>
     <string name="wrong_icao">Wrong ICAO-Code</string>

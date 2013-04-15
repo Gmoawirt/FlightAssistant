@@ -22,8 +22,7 @@ public class ServerThread extends Thread {
 			server = new ServerSocket(3141);
 			Socket s = null;			
 			s = server.accept();
-			this.client = s;
-			
+			this.client = s;			
 		} catch (IOException e3) {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();

@@ -1,20 +1,20 @@
 package com.gmoawirt.flightassistant;
 
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
-import android.app.TaskStackBuilder;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 //Manage the Flight
@@ -24,7 +24,7 @@ import android.util.Log;
 //Set the Flight Status
 //Write the Log
 
-public class FlightManager extends Service implements LocationListener {
+public class FlightManager extends Service implements LocationListener, SensorEventListener {
 
 	private final IBinder mBinder = new LocalBinder();
 
@@ -40,8 +40,22 @@ public class FlightManager extends Service implements LocationListener {
 	public static final String LOG_LANDING = "Landing";
 	public static final String LOG_TOUCH_AND_GO = "Touch and Go";
 
-	private static final int CACHE_CAPACITY = 5;
-	public static final int NOTIFICATION_ID = 0;
+	private Sensor sensorPressure;
+	private SensorManager sensorManager;
+
+	// Kalman filter for smoothing the measured pressure.
+	private KalmanFilter pressureFilter;
+	// Time of the last measurement in seconds since boot; used to compute time
+	// since last update so that the Kalman filter can estimate rate of change.
+	private double lastMeasurementTime;
+
+	private static final double KF_VAR_ACCEL = 0.0075; // Variance of pressure
+														// acceleration noise
+														// input.
+	private static final double KF_VAR_MEASUREMENT = 0.05; // Variance of
+															// pressure
+															// measurement
+															// noise.
 
 	private static LocationManager locationManager;
 	private StateManager stateManager;
@@ -51,7 +65,8 @@ public class FlightManager extends Service implements LocationListener {
 	private double latitude;
 	private double altitude;
 	private double groundspeed;
-	private NotificationManager mNotificationManager;
+	private double pressure;
+
 	private SharedPreferences sharedPref;
 	private boolean useMockGPS;
 
@@ -61,7 +76,12 @@ public class FlightManager extends Service implements LocationListener {
 		super.onCreate();
 
 		Log.i("FlightManager", "(OnCreate)");
-		
+
+		pressureFilter = new KalmanFilter(KF_VAR_ACCEL);
+
+		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		sensorPressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		useMockGPS = sharedPref.getBoolean("setting_mock_location", true);
 
@@ -82,14 +102,16 @@ public class FlightManager extends Service implements LocationListener {
 		// //////////////////////////////////
 		// FOR TESTING
 		// Create a Plane
-		PlaneManager.getInstance().addPlane(false, "C142", 100d, 0.5d, 70d, 4d);
+		PlaneManager.getInstance().addPlane(false, "C142", Double.parseDouble(sharedPref.getString("setting_groundspeed_takeoff", "100")),
+				Double.parseDouble(sharedPref.getString("setting_delta_altitude_takeoff", "1")),
+				Double.parseDouble(sharedPref.getString("setting_groundspeed_landing", "70d")),
+				Double.parseDouble(sharedPref.getString("setting_delta_altitude_margin", "4d")));
 		// PlaneManager.getInstance().addPlane(PositionAndSpeedData.getInstance(),
 		// false, "EV97", 100d, 0.5d, 55d, 2.5d);
 		PlaneManager.getInstance().setupPlane();
 
 		// Create the Log Manager
 		logManager = new LogManager(this);
-		logManager.open();
 
 		// Save the State Manager
 		stateManager = StateManager.getInstance();
@@ -98,106 +120,57 @@ public class FlightManager extends Service implements LocationListener {
 
 		isRunning = true;
 
-		//Subscribe to Position Listener
-		setPositionListener(this, this,true);
+		// Reset Kalman Filter
+		pressureFilter.reset(1013.0912);
+		lastMeasurementTime = SystemClock.elapsedRealtime() / 1000.;
+		sensorManager.registerListener(this, sensorPressure, SensorManager.SENSOR_DELAY_GAME);
+
+		// Subscribe to Position Listener
+		PositionManager.setPositionListener(this, this, true, useMockGPS);
 
 		prepareForTakeoff();
+		
+		NotificationHelper.updateNotification(this, NotificationHelper.STATUS_RUNNING);
 
-		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this).setSmallIcon(R.drawable.ic_launcher).setContentTitle("FlightAssistant")
-				.setContentText("Background service running.");
-		// Creates an explicit intent for an Activity in your app
-		Intent resultIntent = new Intent(this, MainActivity.class);
-
-		// The stack builder object will contain an artificial back stack for
-		// the
-		// started Activity.
-		// This ensures that navigating backward from the Activity leads out of
-		// your application to the Home screen.
-
-		TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-		// Adds the back stack for the Intent (but not the Intent itself)
-		stackBuilder.addParentStack(MainActivity.class);
-		// Adds the Intent that starts the Activity to the top of the stack
-		stackBuilder.addNextIntent(resultIntent);
-		PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-		mBuilder.setContentIntent(resultPendingIntent);
-		// mId (NOTIFICATION_ID) allows you to update the notification later on.
-		mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
-
-		return Service.START_NOT_STICKY;
+		return Service.START_STICKY;
 	}
 
 	public void onDestroy() {
 		if (isRunning) {
 			isRunning = false;
-			logManager.close();
-			setPositionListener(this, this, false);
+			PositionManager.setPositionListener(this, this, false, useMockGPS);
 		}
+		NotificationHelper.cancelNotification(this);
 		Log.i("FlightManager", "FlightManager Service being destroyed.");
-	}
-
-	public void setPositionListener(LocationListener lm, Context context, boolean enable) {
-
-		locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-
-		if (enable) {
-			
-			Log.i("FlightManager", "useMockGPS = " + useMockGPS);
-			if (useMockGPS) {
-				locationManager.removeTestProvider("testProvider");
-				locationManager.addTestProvider("testProvider", false, true, false, false, true, true, false, 0, 5);
-				locationManager.setTestProviderEnabled("testProvider", true);
-				locationManager.requestLocationUpdates("testProvider", 1000, 0, lm);
-
-			} else {
-				locationManager.requestLocationUpdates(locationManager.GPS_PROVIDER, 1000, 0, lm);
-			}
-		} else {
-			locationManager.removeUpdates(lm);
-			Log.i("FlightManager", "Removing Position Updates");
-		}
-
 	}
 
 	@Override
 	public IBinder onBind(Intent intent) {
 		Log.i("FlightManager", "(onBind)");
 
-		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this).setSmallIcon(android.R.drawable.stat_notify_error)
-				.setContentTitle("FlightAssistant").setContentText("Background service NOT running.");
-		// Creates an explicit intent for an Activity in your app
-		Intent resultIntent = new Intent(this, MainActivity.class);
-
-		// The stack builder object will contain an artificial back stack for
-		// the
-		// started Activity.
-		// This ensures that navigating backward from the Activity leads out of
-		// your application to the Home screen.
-
-		TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-		// Adds the back stack for the Intent (but not the Intent itself)
-		stackBuilder.addParentStack(MainActivity.class);
-		// Adds the Intent that starts the Activity to the top of the stack
-		stackBuilder.addNextIntent(resultIntent);
-		PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-		mBuilder.setContentIntent(resultPendingIntent);
-		// mId (NOTIFICATION_ID) allows you to update the notification later on.
-		mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
-
+        NotificationHelper.updateNotification(this, NotificationHelper.STATUS_NOT_RUNNING);
 		return mBinder;
 	}
 
 	@Override
 	public void onLocationChanged(Location location) {
-		// TODO Auto-generated method stub
+
 		Log.i("FlightManager", "Location has changed");
 
 		this.longitude = location.getLongitude();
 		this.latitude = location.getLatitude();
-		this.altitude = location.getAltitude();
-		this.groundspeed = location.getSpeed();
+		if (useMockGPS) {
+			// altitude and groundspeed via Mock-GPS
+			this.altitude = location.getAltitude();
+			this.groundspeed = convertKnotsToKph(location.getSpeed());
+		} else {
+			// altitude via Barometer:
+			double qnh = Double.parseDouble(sharedPref.getString("setting_qnh", "1013.25"));
+			this.altitude = getElevation(pressureFilter.getXAbs(), qnh);
+			
+			// groundspeed without conversion
+			this.groundspeed = location.getSpeed();
+		}
 
 		MainActivity.updateText(longitude, latitude, altitude, groundspeed);
 		StateManager.getInstance().update(longitude, latitude, altitude, groundspeed);
@@ -227,6 +200,33 @@ public class FlightManager extends Service implements LocationListener {
 
 	public static LocationManager getLocationManager() {
 		return locationManager;
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		// Barometer Part
+		final double curr_measurement_time = SystemClock.elapsedRealtime() / 1000.;
+		final double dt = curr_measurement_time - lastMeasurementTime;
+		pressureFilter.update(event.values[0], KF_VAR_MEASUREMENT, dt);
+		lastMeasurementTime = curr_measurement_time;
+	}
+
+	private double getElevation(double qfe, double qnh) {
+		double a = 0.1902612d;
+		double b = 8.417168e-5d;
+
+		double altitude = (Math.pow(qnh, a) - Math.pow(qfe, a)) / b;
+		return altitude;
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+
+	}	
+
+	private double convertKnotsToKph(double knots) {
+		return knots * 1.852d;
 	}
 
 }

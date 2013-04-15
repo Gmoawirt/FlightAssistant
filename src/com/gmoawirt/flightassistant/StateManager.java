@@ -1,7 +1,12 @@
 package com.gmoawirt.flightassistant;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import android.content.Context;
 import android.util.Log;
+import android.widget.Toast;
 
 //Monitors the Flight, checking for State Changes
 
@@ -15,7 +20,7 @@ public class StateManager {
 	public static final int STATE_APPROACH = 6;
 	public static final int STATE_BEFORE_LANDING = 7;
 
-	private static final int CACHE_CAPACITY = 5;
+	private static final int CACHE_CAPACITY = 2;
 
 	private LogManager logManager;
 	private static final StateManager stateManagerInstance = new StateManager();
@@ -25,6 +30,7 @@ public class StateManager {
 	private double altitude;
 	private double latitude;
 	private double groundspeed;
+	private double previousSpeed;
 
 	private Context context;
 	private int state;
@@ -59,6 +65,7 @@ public class StateManager {
 		deltaAltitudeCache.put(Math.random(), altitude);
 		deltaGroundspeedCache.put(Math.random(), groundspeed);
 
+		MainActivity.updateAltitudeDelta(getDeltaAltitude());
 		checkForStateChange();
 	}
 
@@ -68,10 +75,6 @@ public class StateManager {
 
 	public void setState(int state) {
 		this.state = state;
-	}
-
-	public static double convertKnotsToKph(double knots) {
-		return knots * 1.852d;
 	}
 
 	public void setLogManager(LogManager lm) {
@@ -120,7 +123,7 @@ public class StateManager {
 			} else if (i == CACHE_CAPACITY) {
 				high = d;
 			}
-			
+
 			i++;
 		}
 
@@ -131,6 +134,7 @@ public class StateManager {
 		}
 
 		return delta;
+
 	}
 
 	private double getDeltaGroundspeed() {
@@ -155,11 +159,20 @@ public class StateManager {
 		return delta;
 	}
 
-	private void checkForInit() {
-
-		Log.i(this.getClass().getName(), "Setting state to before takeoff");
-		setState(STATE_BEFORE_TAKEOFF);
-
+	private void checkForInit() {		
+		//Check if airborne or not
+		
+		if (this.altitude > (GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getAltitude() + 50d)) {
+			//airborne
+			Log.i(this.getClass().getName(), "Setting state to before landing");
+			setState(STATE_BEFORE_LANDING);		
+			Toast.makeText(context, "State set to before landing", Toast.LENGTH_LONG).show();
+		} else {
+			//not airborne
+			Log.i(this.getClass().getName(), "Setting state to before takeoff");
+			setState(STATE_BEFORE_TAKEOFF);
+			Toast.makeText(context, "State set to before takeoff", Toast.LENGTH_LONG).show();
+		}
 	}
 
 	private void checkForTakeoff() {
@@ -168,13 +181,19 @@ public class StateManager {
 		// true if groundspeed > 100 km/h, state = beforeTakeoff, Delta Altitude
 		// > 1,0 m/s
 
-		if ((convertKnotsToKph(this.groundspeed) > plane.getTakeoffGroundspeed()) && (state == STATE_BEFORE_TAKEOFF)
-				&& (getDeltaAltitude() > plane.getTakeoffDeltaAltitude())) {
+		if ((this.groundspeed > plane.getTakeoffGroundspeed()) && (state == STATE_BEFORE_TAKEOFF) && (getDeltaAltitude() > plane.getTakeoffDeltaAltitude())) {			
+			
+			String nearest = GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao();
+			SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.US);
+			String time = timeFormat.format(new Date(System.currentTimeMillis()));
+			
 			Log.i(this.getClass().getName(), "Setting state to before landing");
+			MainActivity.updateLastLog("Takeoff | " + nearest + " | " + time);	
 
 			setState(STATE_BEFORE_LANDING);
-
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TAKEOFF, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
+			logManager.open();
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TAKEOFF, nearest);
+			logManager.close();
 		}
 
 	}
@@ -195,11 +214,10 @@ public class StateManager {
 		// true if groundspeed < 70 km/h, state = beforeLanding, Altitude change
 		// > -2,5d
 
-		if ((convertKnotsToKph(this.groundspeed) < plane.getLandingGroundspeed()) && (state == STATE_BEFORE_LANDING)
-				&& (getDeltaAltitude() > -(plane.getLandingDeltaMargin()))) {
+		if ((this.groundspeed < plane.getLandingGroundspeed()) && (state == STATE_BEFORE_LANDING) && (getDeltaAltitude() > -(plane.getLandingDeltaMargin()))) {
 			Log.i(this.getClass().getName(), "Setting state to checking touch and go");
 			setState(STATE_TOUCH_AND_GO);
-
+			previousSpeed = this.groundspeed;
 		}
 
 	}
@@ -208,17 +226,27 @@ public class StateManager {
 
 		// Check if plane is going around
 		// true if groundspeed > landing speed, state = checkForTouchAndGo
+		
+		String nearest = GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao();
+		SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.US);
+		String time = timeFormat.format(new Date(System.currentTimeMillis()));	
 
-		if ((convertKnotsToKph(this.groundspeed) > plane.getLandingGroundspeed()) && (state == STATE_TOUCH_AND_GO)) {
-
-			Log.i(this.getClass().getName(), "Touch and Go!");
-
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TOUCH_AND_GO, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
+		if ((this.groundspeed > previousSpeed) && (state == STATE_TOUCH_AND_GO)) {
+			
+			logManager.open();
+			Log.i(this.getClass().getName(), "Touch and Go!");		
+			MainActivity.updateLastLog("Touch and Go | " + nearest + " | " + time);			
+			
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_TOUCH_AND_GO,
+					nearest);
+			logManager.close();
 		} else {
-
+			logManager.open();
 			Log.i(this.getClass().getName(), "Normal Landing");
-			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_LANDING, GpsHelper.getNearestWaypoint(this.longitude, this.latitude, this.context).getIcao());
-
+			MainActivity.updateLastLog("Normal Landing | " + nearest + " | " + time);	
+			
+			logManager.createLog(System.currentTimeMillis(), LogManager.LOG_LANDING, nearest);
+			logManager.close();
 		}
 
 		Log.i(this.getClass().getName(), "Setting state to before takeoff");

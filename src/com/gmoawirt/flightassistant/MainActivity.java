@@ -1,13 +1,11 @@
 package com.gmoawirt.flightassistant;
 
 import android.app.Activity;
-import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
@@ -24,13 +22,17 @@ import android.widget.Toast;
 import com.gmoawirt.flightassistant.FlightManager.LocalBinder;
 
 public class MainActivity extends Activity implements LocationListener {
+	
+	private static final float GPS_MIN_ACCURACY = 15f;
 
 	private static TextView textViewLatitude;
 	private static TextView textViewLongitude;
 	private static TextView textViewAltitude;
+	private static TextView textViewAltitudeDelta;
 	private static TextView textViewGroundspeed;
 	private static TextView textViewState;
 	private static TextView satelliteStatus;
+	private static TextView textViewLastLog;
 	private static Button startFlight;
 	private static Button endFlight;
 	
@@ -48,8 +50,7 @@ public class MainActivity extends Activity implements LocationListener {
 			// LocalService instance
 			LocalBinder binder = (LocalBinder) service;
 			flightManager = binder.getService();
-			Log.i("MainActivity", "Service has connected to Activity");
-			flightManager.setPositionListener(MainActivity.this, MainActivity.this, true);
+			Log.i("MainActivity", "Service has connected to Activity");	
 			setButtons(flightManager.getRunning());
 		}
 
@@ -73,9 +74,10 @@ public class MainActivity extends Activity implements LocationListener {
 
 		GpsSocketServer.getInstance();
 
-		Log.i("MainActivity", "onCreate called");
+		Log.i("MainActivity", "(onCreate)");		
+		
 		// Enable Position Provider
-		ProviderManager.enableProvider(true, this, this);
+		ProviderManager.enableProvider(useMockGPS, this, this);
 
 		// Start the Flight Manager service
 		Intent intent = new Intent(this, FlightManager.class);
@@ -86,11 +88,13 @@ public class MainActivity extends Activity implements LocationListener {
 		// //////////////////////////
 		startFlight = (Button) findViewById(R.id.button_start_flight);
 		endFlight = (Button) findViewById(R.id.button_end_flight);
-		textViewLatitude = (TextView) findViewById(R.id.latitude);
-		textViewLongitude = (TextView) findViewById(R.id.longitude);
-		textViewAltitude = (TextView) findViewById(R.id.altitude);
-		textViewGroundspeed = (TextView) findViewById(R.id.groundspeed);
-		textViewState = (TextView) findViewById(R.id.state);
+		textViewLatitude = (TextView) findViewById(R.id.latitude_disp);
+		textViewLongitude = (TextView) findViewById(R.id.longitude_disp);
+		textViewAltitude = (TextView) findViewById(R.id.altitude_disp);
+		textViewAltitudeDelta = (TextView) findViewById(R.id.altitude_delta_disp);
+		textViewLastLog = (TextView) findViewById(R.id.last_log_disp);
+		textViewGroundspeed = (TextView) findViewById(R.id.groundspeed_disp);
+		//textViewState = (TextView) findViewById(R.id.state_disp);
 
 	}
 
@@ -98,8 +102,7 @@ public class MainActivity extends Activity implements LocationListener {
 	protected void onResume() {
 		super.onResume();
 		Log.i("MainActivity", "(onResume)");
-		Intent intent = new Intent(this, FlightManager.class);
-		bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+		PositionManager.setPositionListener(this, this, true, useMockGPS);		
 	}
 
 	@Override
@@ -107,25 +110,23 @@ public class MainActivity extends Activity implements LocationListener {
 		super.onPause();
 		// unbindService(mConnection);
 		Log.i("MainActivity", "(onPause)");
-		flightManager.setPositionListener(this, this, false);
+		PositionManager.setPositionListener(this, this, false, useMockGPS);
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
 		Log.i("MainActivity", "(onStart)");
+		Intent intent = new Intent(this, FlightManager.class);
+		bindService(intent, mConnection, Context.BIND_AUTO_CREATE);		
 	}
 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		unbindService(mConnection);
-		Log.i(this.getClass().getName(), "Main Activity being destroyed");
-		flightManager.setPositionListener(this, this, false);
-		if (!flightManager.getRunning()) {
-			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-			mNotificationManager.cancel(FlightManager.NOTIFICATION_ID);
-		}
+		Log.i("MainActivity", "(onDestroy)");
+		PositionManager.setPositionListener(this, this, false, useMockGPS);
 	}
 
 	@Override
@@ -185,10 +186,9 @@ public class MainActivity extends Activity implements LocationListener {
 		if (stopService(intent)) {
 			Toast.makeText(getApplicationContext(), "FlightManager Service stopped", Toast.LENGTH_LONG).show();
 			Log.i("MainActivity", "Service stopped");
-			flightManager.setPositionListener(flightManager, flightManager, false);
+			PositionManager.setPositionListener(flightManager, flightManager, false, useMockGPS);
 			setButtons(false);
-			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-			mNotificationManager.cancel(FlightManager.NOTIFICATION_ID);
+			NotificationHelper.cancelNotification(flightManager);
 
 		} else {
 			Toast.makeText(getApplicationContext(), "Service NOT stopped, maybe it's not running?", Toast.LENGTH_LONG).show();
@@ -203,9 +203,17 @@ public class MainActivity extends Activity implements LocationListener {
 		textViewAltitude.setText(String.valueOf(altitude));
 		textViewGroundspeed.setText(String.valueOf(groundspeed));
 	}
+	
+	public static void updateAltitudeDelta(double delta){
+		textViewAltitudeDelta.setText(String.valueOf(delta));
+	}
 
 	public static void updateState(String state) {
 		textViewState.setText(state);
+	}
+	
+	public static void updateLastLog(String log) {
+		textViewLastLog.setText(log);
 	}
 
 	private void enableStartButton(boolean enable) {
@@ -230,12 +238,12 @@ public class MainActivity extends Activity implements LocationListener {
 
 		if (!useMockGPS) {
 			//Real GPS
-			if (location.getAccuracy() == 0.0f || location.getAccuracy() > 10f) {
+			if (location.getAccuracy() == 0.0f || location.getAccuracy() > GPS_MIN_ACCURACY) {
 				enableStartButton(false);
 			} else {
 				enableStartButton(true);
 			}
-			satelliteStatus.setText("Satellites: " + location.getExtras().get("satellites") + "/13, Accuracy " + location.getAccuracy());			
+			satelliteStatus.setText("Satellites: " + location.getExtras().get("satellites") + ", Accuracy " + location.getAccuracy() + "m");			
 		} else {
 			//Mock Provider enabled
 			enableStartButton(true);
@@ -261,7 +269,6 @@ public class MainActivity extends Activity implements LocationListener {
 	public void onStatusChanged(String arg0, int arg1, Bundle arg2) {
 		// TODO Auto-generated method stub
 		Log.i("Main Activity", "GPS status changed");
-
 	}
 
 	private void setButtons(boolean isRunning) {

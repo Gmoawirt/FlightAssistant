@@ -1,0 +1,12 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/delete_log"
+        android:orderInCategory="100"
+        android:title="@string/delete"/>
+    <item
+        android:id="@+id/cancel"
+        android:orderInCategory="100"
+        android:title="@string/cancel"/>
+
+</menu>

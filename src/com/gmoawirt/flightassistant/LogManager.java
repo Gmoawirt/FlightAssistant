@@ -7,18 +7,21 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
+import android.widget.Toast;
 
 public class LogManager extends EntryManager {
 
 	public static final String LOG_LANDING = "Landing";
 	public static final String LOG_TAKEOFF = "Takeoff";
 	public static final String LOG_TOUCH_AND_GO = "Touch and Go";
+	Context context;
 
 	// Database fields
 	private String[] allColumns = { MySQLiteHelper.COLUMN_ID, MySQLiteHelper.COLUMN_TIMESTAMP, MySQLiteHelper.COLUMN_EVENT, MySQLiteHelper.COLUMN_WAYPOINT };
 
 	public LogManager(Context context) {
 		super(context);
+		this.context = context;
 	}
 
 	public void createLog(long timestamp, String event, String waypoint) {
@@ -31,13 +34,19 @@ public class LogManager extends EntryManager {
 		values.put(MySQLiteHelper.COLUMN_WAYPOINT, waypoint);
 
 		database.insert(MySQLiteHelper.TABLE_LOGS, null, values);
-
 	}
 
 	public void deleteLog(Flightlog log) {
 		long id = log.getId();
-		Log.i(this.getClass().getName(), "Log deleted with id: " + id);
+		Log.i("LogManager", "Log deleted with id: " + id);
 		database.delete(MySQLiteHelper.TABLE_LOGS, MySQLiteHelper.COLUMN_ID + " = " + id, null);
+		Toast.makeText(context, "Log deleted", Toast.LENGTH_SHORT).show();
+	}
+	
+	public void deleteLog(long id) {		
+		Log.i("LogManager", "Log deleted with id: " + id);
+		database.delete(MySQLiteHelper.TABLE_LOGS, MySQLiteHelper.COLUMN_ID + " = " + id, null);
+		Toast.makeText(context, "Log deleted", Toast.LENGTH_SHORT).show();
 	}
 
 	public List<Flightlog> getLogsFromDate(Long timestamp) {
